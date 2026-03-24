@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>A11y iFrame Checker — WCAG 2.2 Title Generator</title>
+  <meta name="description"
+    content="Analyze iframe HTML snippets and page URLs to generate WCAG 2.2-compliant title attributes for screen reader accessibility." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+
+<body>
+
+  <!-- ── Header ─────────────────────────────────────────────────────────────── -->
+  <header class="site-header" role="banner">
+    <div class="header-inner">
+      <div class="brand">
+        <span class="brand-icon" aria-hidden="true">⬡</span>
+        <div>
+          <h1 class="brand-name">A11y iFrame Checker</h1>
+          <p class="brand-sub">WCAG 2.2 Title Generator for Screen Readers</p>
+        </div>
+      </div>
+      <button class="btn-icon" id="settings-toggle" aria-label="Open settings" aria-expanded="false"
+        aria-controls="settings-panel">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Settings Panel ─────────────────────────────────────────────────────── -->
+  <aside class="settings-panel" id="settings-panel" role="complementary" aria-label="API Settings" hidden>
+    <div class="settings-header">
+      <h2 class="settings-title">AI Settings</h2>
+      <button class="btn-icon" id="settings-close" aria-label="Close settings">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <div
+      style="padding: 14px 24px 0; font-size: .8rem; line-height: 1.5; color: rgba(255,255,255,.85); background: var(--primary); border-bottom: 1px solid rgba(255,255,255,.15); padding-bottom: 14px;">
+      <strong style="color:#fff;">When is AI used?</strong><br />
+      Only in the <strong style="color:var(--secondary);">Analyze iFrame</strong> tab — and only when the iframe URL
+      doesn’t match a known platform (YouTube, Vimeo, Google Maps, etc.). The AI reads the page’s title, description,
+      and headings to generate a WCAG-appropriate title suggestion.<br />
+      <span style="opacity:.75;">Embed Checker and Scan Page are 100% rule-based and never use AI.</span>
+    </div>
+    <form id="settings-form" novalidate>
+      <fieldset class="settings-fieldset">
+        <legend>Default Provider</legend>
+        <div class="field">
+          <label for="provider-select">Active LLM Provider</label>
+          <select id="provider-select" name="DEFAULT_LLM_PROVIDER">
+            <option value="gemini">Gemini (Google)</option>
+            <option value="claude">Claude (Anthropic)</option>
+            <option value="openai">ChatGPT (OpenAI)</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="azure">GitHub Copilot / Azure OpenAI</option>
+          </select>
+        </div>
+      </fieldset>
+      <fieldset class="settings-fieldset">
+        <legend>API Keys</legend>
+        <div class="field">
+          <label for="key-gemini">Gemini API Key</label>
+          <input type="password" id="key-gemini" name="GEMINI_API_KEY" placeholder="AIza…" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="key-claude">Claude (Anthropic) API Key</label>
+          <input type="password" id="key-claude" name="ANTHROPIC_API_KEY" placeholder="sk-ant-…" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="key-openai">OpenAI API Key</label>
+          <input type="password" id="key-openai" name="OPENAI_API_KEY" placeholder="sk-…" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="key-deepseek">DeepSeek API Key</label>
+          <input type="password" id="key-deepseek" name="DEEPSEEK_API_KEY" placeholder="sk-…" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="key-azure">Azure OpenAI API Key</label>
+          <input type="password" id="key-azure" name="AZURE_OPENAI_API_KEY" placeholder="…" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="azure-endpoint">Azure Endpoint URL</label>
+          <input type="url" id="azure-endpoint" name="AZURE_OPENAI_ENDPOINT"
+            placeholder="https://your-resource.openai.azure.com" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="azure-deployment">Azure Deployment Name</label>
+          <input type="text" id="azure-deployment" name="AZURE_OPENAI_DEPLOYMENT" placeholder="gpt-4o-mini"
+            autocomplete="off" />
+        </div>
+      </fieldset>
+      <div class="settings-actions">
+        <button type="submit" class="btn btn-primary" id="settings-save">Save Settings</button>
+        <span class="settings-status" id="settings-status" role="status" aria-live="polite"></span>
+      </div>
+    </form>
+  </aside>
+  <div class="settings-overlay" id="settings-overlay" hidden></div>
+
+  <!-- ── Main Content ───────────────────────────────────────────────────────── -->
+  <main class="main-content" id="main-content">
+    <!-- Tab Navigation -->
+    <div class="tab-nav" role="tablist" aria-label="Tool tabs">
+      <button class="tab-btn active" role="tab" id="tab-analyze" aria-selected="true" aria-controls="panel-analyze">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+        Analyze iFrame
+      </button>
+      <button class="tab-btn" role="tab" id="tab-scan" aria-selected="false" aria-controls="panel-scan">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        Scan Page
+      </button>
+      <button class="tab-btn" role="tab" id="tab-checker" aria-selected="false" aria-controls="panel-checker">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+        </svg>
+        Embed Checker
+      </button>
+    </div>
+
+    <!-- ── Analyze Panel ──────────────────────────────────────────────────── -->
+    <section class="tab-panel active" id="panel-analyze" role="tabpanel" aria-labelledby="tab-analyze">
+      <div class="panel-grid">
+        <!-- Input Column -->
+        <div class="input-col">
+          <form id="analyze-form" novalidate>
+            <div class="card">
+              <h2 class="card-title">iFrame Input</h2>
+              <div class="field">
+                <label for="iframe-snippet">iFrame HTML Snippet</label>
+                <textarea id="iframe-snippet" name="snippet" rows="7"
+                  placeholder='Paste your &lt;iframe&gt; tag here&#10;&#10;&lt;iframe src="https://www.youtube.com/embed/abc123" width="560" height="315"&gt;&lt;/iframe&gt;'
+                  aria-describedby="snippet-hint"></textarea>
+                <span class="field-hint" id="snippet-hint">Paste the full surrounding HTML for better context
+                  detection.</span>
+              </div>
+              <div class="field">
+                <label for="src-override">Source URL Override <span class="optional">(optional)</span></label>
+                <input type="url" id="src-override" name="src_override" placeholder="https://example.com/embed/content"
+                  autocomplete="off" />
+                <span class="field-hint">Use this if the iframe src is a relative path or you only have a URL.</span>
+              </div>
+              <div class="field">
+                <label for="llm-provider-override">LLM Provider <span class="optional">(optional
+                    override)</span></label>
+                <select id="llm-provider-override" name="llm_provider">
+                  <option value="">Use default from settings</option>
+                  <option value="gemini">Gemini</option>
+                  <option value="claude">Claude</option>
+                  <option value="openai">ChatGPT (OpenAI)</option>
+                  <option value="deepseek">DeepSeek</option>
+                  <option value="azure">Azure / Copilot</option>
+                </select>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="analyze-btn">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  Generate Titles
+                </button>
+                <button type="button" class="btn btn-ghost" id="analyze-clear">Clear</button>
+              </div>
+            </div>
+          </form>
+
+          <!-- WCAG Context Card -->
+          <div class="card card-info">
+            <h3 class="card-title-sm">Why title attributes matter</h3>
+            <p class="card-body-sm">WCAG 2.2 SC 4.1.2 and Technique H64 require all <code>&lt;iframe&gt;</code> elements
+              to have a meaningful <code>title</code> attribute. Screen reader users hear this title before deciding
+              whether to enter the frame.</p>
+          </div>
+        </div>
+
+        <!-- Results Column -->
+        <div class="results-col" id="results-col">
+          <div class="results-placeholder" id="results-placeholder" aria-hidden="true">
+            <div class="placeholder-icon">⬡</div>
+            <p>Submit an iframe snippet to see title suggestions</p>
+          </div>
+
+          <div class="results-panel" id="results-panel" hidden>
+            <!-- Status bar -->
+            <div class="result-status-bar" id="result-status-bar">
+              <span class="badge" id="result-confidence-badge"></span>
+              <span class="result-platform" id="result-platform"></span>
+              <span class="result-provider" id="result-provider"></span>
+            </div>
+
+            <!-- Title candidates -->
+            <div class="card" id="candidates-card">
+              <h2 class="card-title">Suggested Titles
+                <span class="card-subtitle">(Select one to apply)</span>
+              </h2>
+              <fieldset class="candidates-fieldset" id="candidates-fieldset" aria-label="Title candidates">
+                <legend class="sr-only">Title candidates — select one to apply</legend>
+                <!-- Injected by JS -->
+              </fieldset>
+            </div>
+
+            <!-- Corrected snippet -->
+            <div class="card" id="snippet-card">
+              <div class="card-title-row">
+                <h2 class="card-title">Corrected iFrame Snippet</h2>
+                <button class="btn btn-sm btn-ghost" id="copy-btn" aria-label="Copy corrected snippet to clipboard">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  Copy
+                </button>
+              </div>
+              <pre class="code-block" id="corrected-snippet" aria-label="Corrected iframe HTML"></pre>
+            </div>
+
+            <!-- WCAG Rationale -->
+            <div class="card card-rationale" id="rationale-card">
+              <h2 class="card-title">WCAG Rationale</h2>
+              <p id="wcag-rationale"></p>
+            </div>
+
+            <!-- Save to export / export panel -->
+            <div class="export-actions">
+              <button class="btn btn-secondary" id="save-result-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
+                  stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                Save to Export
+              </button>
+              <span class="save-count" id="save-count" aria-live="polite"></span>
+            </div>
+          </div>
+
+          <!-- Loading state -->
+          <div class="loading-overlay" id="analyze-loading" hidden aria-live="polite" aria-busy="true">
+            <div class="spinner" aria-hidden="true"></div>
+            <p>Analyzing iframe…</p>
+          </div>
+
+          <!-- Error state -->
+          <div class="error-panel" id="analyze-error" hidden role="alert">
+            <p id="analyze-error-msg"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export Bar -->
+      <div class="export-bar" id="export-bar" hidden>
+        <div class="export-bar-inner">
+          <span id="export-count-label"></span>
+          <div class="export-btns">
+            <button class="btn btn-sm btn-primary" id="export-csv-btn">Export CSV</button>
+            <button class="btn btn-sm btn-secondary" id="export-json-btn">Export JSON</button>
+            <button class="btn btn-sm btn-ghost" id="clear-export-btn">Clear</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Scan Panel ─────────────────────────────────────────────────────── -->
+    <section class="tab-panel" id="panel-scan" role="tabpanel" aria-labelledby="tab-scan" hidden>
+      <div class="card scan-card">
+        <h2 class="card-title">Scan a Page for iFrames</h2>
+        <form id="scan-form" novalidate>
+          <div class="scan-input-row">
+            <div class="field flex-1">
+              <label for="scan-url" class="sr-only">Page URL to scan</label>
+              <input type="url" id="scan-url" name="url" placeholder="https://university.edu/some-wordpress-page"
+                autocomplete="off" required aria-describedby="scan-url-hint" />
+              <span class="field-hint" id="scan-url-hint">Enter a WordPress page URL to find all iframes and run an
+                instant accessibility audit.</span>
+            </div>
+            <button type="submit" class="btn btn-primary" id="scan-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              Scan All
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Scan loading -->
+      <div class="loading-overlay loading-inline" id="scan-loading" hidden aria-live="polite" aria-busy="true">
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Scanning page for iframes…</p>
+      </div>
+
+      <!-- Scan error -->
+      <div class="error-panel" id="scan-error" hidden role="alert">
+        <p id="scan-error-msg"></p>
+      </div>
+
+      <!-- Scan results -->
+      <div id="scan-results" hidden>
+        <!-- Summary banner -->
+        <div class="scan-summary" id="scan-summary" role="status" aria-live="polite"></div>
+
+        <!-- Audit table -->
+        <div class="table-wrapper">
+          <table class="audit-table" id="audit-table" aria-label="iFrame accessibility audit results">
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">Platform</th>
+                <th scope="col">Existing Title</th>
+                <th scope="col">Status</th>
+                <th scope="col">Action</th>
+              </tr>
+            </thead>
+            <tbody id="audit-table-body">
+              <!-- Injected by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+    <!-- ── Embed Checker Panel ────────────────────────────────────────────── -->
+    <section class="tab-panel" id="panel-checker" role="tabpanel" aria-labelledby="tab-checker" hidden>
+      <div class="panel-grid">
+        <!-- Input -->
+        <div class="input-col">
+          <form id="checker-form" novalidate>
+            <div class="card">
+              <h2 class="card-title">Embed Snippet Input</h2>
+              <div class="field">
+                <label for="checker-snippet">HTML Snippet</label>
+                <textarea id="checker-snippet" name="snippet" rows="10"
+                  placeholder='Paste any embed snippet here:&#10;&#10;&lt;iframe&gt;, &lt;object&gt;, &lt;embed&gt;, &lt;video&gt;, &lt;audio&gt;'
+                  aria-describedby="checker-hint"></textarea>
+                <span class="field-hint" id="checker-hint">Supports iFrame, object, embed, video, and audio elements.
+                  Include surrounding HTML for better context detection.</span>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="checker-btn">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Run WCAG 2.2 Audit
+                </button>
+                <button type="button" class="btn btn-ghost" id="checker-clear">Clear</button>
+              </div>
+            </div>
+          </form>
+
+          <div class="card card-info">
+            <h3 class="card-title-sm">What gets checked</h3>
+            <p class="card-body-sm">
+              <strong>&lt;iframe&gt; / &lt;embed&gt; / &lt;object&gt;</strong> — Title attribute, fallback content,
+              keyboard access (SC 4.1.2, 1.1.1)<br />
+              <strong>&lt;video&gt;</strong> — Captions track, audio description, controls, accessible name (SC 1.2.2,
+              1.2.5, 2.1.1, 4.1.2)<br />
+              <strong>&lt;audio&gt;</strong> — Controls, transcript advisory, autoplay (SC 1.2.1, 2.1.1, 4.1.2)
+            </p>
+          </div>
+        </div>
+
+        <!-- Results -->
+        <div class="results-col" id="checker-results-col">
+          <div class="results-placeholder" id="checker-placeholder" aria-hidden="true">
+            <div class="placeholder-icon">⬡</div>
+            <p>Paste a snippet and run the audit to see WCAG 2.2 findings</p>
+          </div>
+
+          <!-- Loading -->
+          <div class="loading-overlay" id="checker-loading" hidden aria-live="polite" aria-busy="true">
+            <div class="spinner" aria-hidden="true"></div>
+            <p>Running WCAG 2.2 audit…</p>
+          </div>
+
+          <!-- Error -->
+          <div class="error-panel" id="checker-error" hidden role="alert">
+            <p id="checker-error-msg"></p>
+          </div>
+
+          <!-- Results panel -->
+          <div id="checker-results-panel" hidden>
+            <!-- Score bar -->
+            <div class="checker-score-bar" id="checker-score-bar" role="status" aria-live="polite"></div>
+
+            <!-- Findings list -->
+            <div class="card" id="checker-findings-card">
+              <h2 class="card-title">Findings
+                <span class="card-subtitle" id="checker-element-badge"></span>
+              </h2>
+              <ul class="findings-list" id="findings-list" aria-label="WCAG 2.2 findings">
+                <!-- Injected by JS -->
+              </ul>
+            </div>
+
+            <!-- Minimal fix -->
+            <div class="card">
+              <div class="card-title-row">
+                <h2 class="card-title">Minimal Fix <span class="card-subtitle">(safe — attribute additions only)</span>
+                </h2>
+                <button class="btn btn-sm btn-ghost" id="copy-minimal-btn"
+                  aria-label="Copy minimal fix to clipboard">Copy</button>
+              </div>
+              <pre class="code-block" id="minimal-fix-block" aria-label="Minimally corrected HTML"></pre>
+            </div>
+
+            <!-- Full accessible version -->
+            <div class="card card-rationale">
+              <div class="card-title-row">
+                <h2 class="card-title">Full Accessible Version <span class="card-subtitle">(recommended — all WCAG
+                    attributes)</span></h2>
+                <button class="btn btn-sm btn-ghost" id="copy-full-btn"
+                  aria-label="Copy full accessible version to clipboard">Copy</button>
+              </div>
+              <pre class="code-block" id="full-fix-block" aria-label="Fully accessible HTML"></pre>
+            </div>
+
+            <!-- Save to export -->
+            <div class="export-actions">
+              <button class="btn btn-secondary" id="save-checker-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
+                  stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                Save to Export
+              </button>
+              <span class="save-count" id="checker-save-count" aria-live="polite"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Screen reader live region -->
+  <div class="sr-only" aria-live="assertive" aria-atomic="true" id="sr-announce"></div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+
+</html>
