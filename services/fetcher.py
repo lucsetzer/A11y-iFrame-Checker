@@ -21,10 +21,10 @@ def fetch_iframe_metadata(url: str) -> dict:
     Fetch the iframe source URL and extract accessible metadata.
 
     Returns a dict with keys:
-        - title: str | None
-        - description: str | None
-        - h1: str | None
-        - error: str | None
+        - title: Optional[str]
+        - description: Optional[str]
+        - h1: Optional[str]
+        - error: Optional[str]
         - fetched: bool
     """
     result = {"title": None, "description": None, "h1": None,
@@ -79,7 +79,9 @@ def fetch_iframe_metadata(url: str) -> dict:
     return result
 
 
-def fetch_oembed_title(platform: str, url: str) -> str | None:
+from typing import Tuple, Dict, List, Union, Optional
+
+def fetch_oembed_title(platform: str, url: str) -> Optional[str]:
     """
     Fetch a human-readable title from YouTube or Vimeo oEmbed endpoints.
     No API key required.

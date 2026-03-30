@@ -10,7 +10,7 @@ import os
 from dotenv import load_dotenv, set_key
 from flask import Flask, jsonify, render_template, request, send_file
 
-from services import analyzer, embed_checker
+from services import embed_checker
 
 load_dotenv()
 
@@ -33,100 +33,46 @@ def index():
     return render_template("index.html")
 
 
-@app.route("/analyze", methods=["POST"])
-def analyze():
-    """
-    Analyze a single iframe snippet.
-    Body (JSON):
-        snippet       : str  — raw iframe HTML (required)
-        src_override  : str  — optional source URL override
-        llm_provider  : str  — optional LLM provider override
-    """
-    data = request.get_json(silent=True) or {}
-    snippet = (data.get("snippet") or "").strip()
-    src_override = (data.get("src_override") or "").strip() or None
-    llm_provider = (data.get("llm_provider") or "").strip() or None
-
-    if not snippet and not src_override:
-        return _error("Provide an iframe snippet or source URL.")
-
-    # If just a URL is provided (no HTML), wrap it
-    if not snippet and src_override:
-        snippet = f'<iframe src="{src_override}"></iframe>'
-
-    result = analyzer.analyze_iframe(
-        snippet=snippet,
-        src_override=src_override,
-        llm_provider=llm_provider,
-    )
-    return jsonify(result)
-
-
-@app.route("/scan", methods=["POST"])
-def scan():
-    """
-    Scan a page URL for all iframes and return a heuristic-only audit.
-    Body (JSON):
-        url : str
-    """
-    data = request.get_json(silent=True) or {}
-    url = (data.get("url") or "").strip()
-    if not url:
-        return _error("Provide a page URL to scan.")
-    if not url.startswith(("http://", "https://")):
-        url = "https://" + url
-
-    result = analyzer.scan_page(url)
-    return jsonify(result)
-
-
-@app.route("/settings", methods=["POST"])
-def settings():
-    """
-    Update API keys in .env.
-    Body (JSON): any subset of the key names defined in .env.template
-    """
-    data = request.get_json(silent=True) or {}
-    allowed_keys = [
-        "GEMINI_API_KEY",
-        "ANTHROPIC_API_KEY",
-        "OPENAI_API_KEY",
-        "DEEPSEEK_API_KEY",
-        "AZURE_OPENAI_API_KEY",
-        "AZURE_OPENAI_ENDPOINT",
-        "AZURE_OPENAI_DEPLOYMENT",
-        "DEFAULT_LLM_PROVIDER",
-    ]
-    updated = []
-    # Ensure .env file exists
-    if not os.path.exists(ENV_PATH):
-        open(ENV_PATH, "w").close()
-
-    for key in allowed_keys:
-        val = data.get(key)
-        if val is not None:
-            set_key(ENV_PATH, key, str(val))
-            os.environ[key] = str(val)
-            updated.append(key)
-
-    load_dotenv(override=True)
-    return jsonify({"updated": updated, "message": "Settings saved successfully."})
-
-
 @app.route("/check-embed", methods=["POST"])
 def check_embed():
     """
-    Run a WCAG 2.2 accessibility audit on any embedded content snippet.
-    Supports: <iframe>, <object>, <embed>, <video>, <audio>
+    Run WCAG 2.2 audits on a snippet OR scan a page URL for multiple embeds.
     Body (JSON):
-        snippet : str — raw HTML snippet
+        snippet : str — optional raw HTML snippet
+        url     : str — optional page URL to scan
     """
     data = request.get_json(silent=True) or {}
     snippet = (data.get("snippet") or "").strip()
-    if not snippet:
-        return _error("Provide an embed snippet to check.")
-    result = embed_checker.check_embed(snippet)
-    return jsonify(result)
+    url = (data.get("url") or "").strip()
+
+    if not snippet and not url:
+        return _error("Provide a snippet or a URL to check.")
+
+    from services import browser_fetcher
+    
+    all_results = []
+    
+    if url:
+        if not url.startswith(("http://", "https://")):
+            url = "https://" + url
+        try:
+            found_items = browser_fetcher.get_embeds(url)
+            for item in found_items:
+                s = item["snippet"]
+                # Pass the rich metadata into the checker
+                audit_res = embed_checker.check_embed(s, metadata=item)
+                
+                # Add location and contextual metadata
+                audit_res["line"] = item.get("line")
+                audit_res["source_url"] = item.get("url")
+                all_results.append(audit_res)
+        except Exception as e:
+            return _error(f"Scan failed: {str(e)}")
+    else:
+        audit_res = embed_checker.check_embed(snippet)
+        all_results.append(audit_res)
+
+    return jsonify({"findings": all_results, "count": len(all_results)})
 
 
 @app.route("/export", methods=["POST"])

@@ -5,12 +5,13 @@ extract title candidates without any LLM call.
 Returns:
     {
       "confidence": "high" | "medium" | "low",
-      "platform": str | None,
+      "platform": Optional[str],
       "candidates": [ {"title": str, "rationale": str} ],
     }
 """
 import re
 from urllib.parse import urlparse, parse_qs
+from typing import Union, Optional, Tuple, List, Dict
 from services.fetcher import fetch_oembed_title
 
 # ── Platform detection patterns ──────────────────────────────────────────────
@@ -165,7 +166,7 @@ WCAG_RATIONALE = (
 )
 
 
-def _detect_platform(src: str) -> tuple[str | None, dict | None]:
+def _detect_platform(src: str) -> Tuple[Optional[str], Optional[dict]]:
     """Return (platform_key, pattern_config) or (None, None)."""
     for config in PLATFORM_PATTERNS:
         for pat in config["patterns"]:
@@ -174,7 +175,7 @@ def _detect_platform(src: str) -> tuple[str | None, dict | None]:
     return None, None
 
 
-def _extract_maps_query(src: str) -> str | None:
+def _extract_maps_query(src: str) -> Optional[str]:
     """Try to extract a location query from a Google Maps embed URL."""
     parsed = urlparse(src)
     params = parse_qs(parsed.query)

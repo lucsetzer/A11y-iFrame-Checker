@@ -4,6 +4,7 @@ an <iframe> element. Walks parent and sibling elements up to two levels
 to find headings, figcaptions, labels, or paragraphs that describe the iframe.
 """
 from bs4 import BeautifulSoup, Tag
+from typing import Optional, Dict, List
 
 CONTEXT_TAGS = ["h1", "h2", "h3", "h4", "h5", "h6",
                 "figcaption", "label", "p", "caption", "legend"]
@@ -16,8 +17,8 @@ def extract_context(html_snippet: str) -> dict:
 
     Returns:
         {
-          "context_text": str | None,
-          "context_source": str | None,  e.g. "h2", "figcaption"
+          "context_text": Optional[str],
+          "context_source": Optional[str],  # e.g. "h2", "figcaption"
         }
     """
     if not html_snippet:

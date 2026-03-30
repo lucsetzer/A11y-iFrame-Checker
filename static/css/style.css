@@ -85,6 +85,10 @@ body {
   line-height: 1.6;
 }
 
+[v-cloak] {
+  display: none;
+}
+
 :focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
@@ -622,6 +626,71 @@ body {
   background: #fdf0f0;
   color: #922b21;
   border: 1px solid #c0392b;
+}
+
+/* 3-Tier Severity Highlights */
+.finding-critical {
+  border-left: 4px solid #c0392b;
+  background: #fffcfc;
+}
+
+.badge-critical {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #f87171;
+}
+
+.finding-warning {
+  border-left: 4px solid #d97706;
+  background: #fffdfa;
+}
+
+.badge-warning {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fbbf24;
+}
+
+.finding-manual {
+  border-left: 4px solid #2563eb;
+  background: #f8fbff;
+}
+
+.badge-manual {
+  background: #dBeafe;
+  color: #1e40af;
+  border: 1px solid #60a5fa;
+}
+
+.finding-info {
+  border-left: 4px solid #64748b;
+  background: #f8fafc;
+}
+
+.badge-info {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.score-val.fail {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.score-val.warn {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.score-val.info {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.score-val.pass {
+  background: #dcfce7;
+  color: #166534;
 }
 
 .result-platform {
