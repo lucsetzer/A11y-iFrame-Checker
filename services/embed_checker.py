@@ -439,117 +439,112 @@ CHECKER_MAP = {
 }
 
 
-def check_embed(snippet: str, metadata: Optional[Dict] = None) -> Dict:
+def check_embed(snippet: str, metadata: Optional[Dict] = None) -> List[Dict]:
     """
-    Run a full WCAG 2.2 accessibility audit on an embedded content snippet.
-    Optionally incorporates runtime metadata from Playwright for deeper analysis.
+    Run WCAG 2.2 accessibility audits on ALL embedded elements found in a snippet.
+    Returns a list of audit result dictionaries.
     """
     if not snippet or not snippet.strip():
-        return {"error": "No snippet provided.", "element_type": None, "findings": [],
-                "minimal_fix": "", "full_fix": "", "summary": {}}
+        return []
 
     soup = BeautifulSoup(snippet.strip(), "lxml")
+    results = []
 
-    # Detect element
-    el = None
-    element_type = None
+    # Find ALL supported elements
+    found_elements: List[Tuple[Tag, str]] = []
     for tag_name in SUPPORTED_ELEMENTS:
-        el = soup.find(tag_name)
-        if el:
-            element_type = tag_name
-            break
+        for el in soup.find_all(tag_name):
+            found_elements.append((el, tag_name))
 
-    if not el or not element_type:
-        return {
-            "error": "No supported embed element found.",
-            "element_type": None,
-            "findings": [],
-            "minimal_fix": "",
-            "full_fix": "",
-            "summary": {},
-        }
+    if not found_elements:
+        return []
 
-    # Run base checks
-    checker = CHECKER_MAP[element_type]
-    findings = checker(el)
+    for el, element_type in found_elements:
+        # Run base checks
+        checker = CHECKER_MAP[element_type]
+        findings = checker(el)
 
-    # ── Advanced Heuristics (via Metadata) ──────────────────────────────────
-    if metadata:
-        is_visible = metadata.get("is_visible", True)
-        width = metadata.get("width", 100)
-        height = metadata.get("height", 100)
-        aria_hidden = str(metadata.get("aria_hidden", "")).lower() == "true"
-        tabindex = str(metadata.get("tabindex", "")).strip()
-        page_title = metadata.get("page_title", "")
-        page_h1 = metadata.get("page_h1", "")
-        interactive_count = metadata.get("interactive_count", 0)
+        # ── Advanced Heuristics (via Metadata) ──────────────────────────────────
+        # Note: Metadata only applies to the specific element being scanned in URL mode.
+        # For snippets, we usually only have one metadata-driven audit at a time,
+        # but if metadata is provided, we associate it with the first matching element.
+        if metadata and not results:
+            is_visible = metadata.get("is_visible", True)
+            width = metadata.get("width", 100)
+            height = metadata.get("height", 100)
+            aria_hidden = str(metadata.get("aria_hidden", "")).lower() == "true"
+            tabindex = str(metadata.get("tabindex", "")).strip()
+            page_title = metadata.get("page_title", "")
+            page_h1 = metadata.get("page_h1", "")
+            interactive_count = metadata.get("interactive_count", 0)
 
-        # 1. Tracking Pixel / Empty Content
-        is_pixel = (width <= 1 and height <= 1) or (not is_visible and width == 0)
-        if is_pixel and element_type == "iframe":
-            # Demote title errors for pixels, suggest hiding instead
-            findings = [f for f in findings if f["criterion"] != "4.1.2"]
-            if not aria_hidden or tabindex != "-1":
+            # 1. Tracking Pixel / Empty Content
+            is_pixel = (width <= 1 and height <= 1) or (not is_visible and width == 0)
+            if is_pixel and element_type == "iframe":
+                findings = [f for f in findings if f["criterion"] != "4.1.2"]
+                if not aria_hidden or tabindex != "-1":
+                    findings.append(_finding(
+                        "4.1.2", "warning",
+                        "This appears to be a tracking pixel or empty frame. It should be hidden from assistive technology.",
+                        "H67",
+                        'Add aria-hidden="true" and tabindex="-1" to this element.'
+                    ))
+
+            # 2. Invisible Focusable Content (Critical)
+            if aria_hidden and tabindex not in ("-1", ""):
                 findings.append(_finding(
-                    "4.1.2", "warning",
-                    "This appears to be a tracking pixel or empty frame. It should be hidden from assistive technology.",
-                    "H67",
-                    'Add aria-hidden="true" and tabindex="-1" to this element.'
+                    "2.1.1", "error",
+                    "Critical: Element is aria-hidden but remains in the tab order. Keyboard users will 'disappear' into this hidden frame.",
+                    "G202",
+                    'Set tabindex="-1" so keyboard users bypass this hidden content.'
                 ))
 
-        # 2. Invisible Focusable Content (Critical)
-        if aria_hidden and tabindex not in ("-1", ""):
-            findings.append(_finding(
-                "2.1.1", "error",
-                "Critical: Element is aria-hidden but remains in the tab order. Keyboard users will 'disappear' into this hidden frame.",
-                "G202",
-                'Set tabindex="-1" so keyboard users bypass this hidden content.'
-            ))
+            # 3. Title Specificity Conflict
+            title_attr = (el.get("title") or "").strip()
+            if title_attr and page_title and title_attr.lower() == page_title.lower():
+                findings.append(_finding(
+                    "4.1.2", "warning",
+                    f'The iframe title is identical to the page title ("{page_title}"). This can be confusing for screen reader users.',
+                    "G88",
+                    f'Clarify the purpose, e.g. title="{title_attr} Form" or title="Embedded {title_attr}".'
+                ))
 
-        # 3. Title Specificity Conflict
-        title_attr = (el.get("title") or "").strip()
-        if title_attr and page_title and title_attr.lower() == page_title.lower():
-            findings.append(_finding(
-                "4.1.2", "warning",
-                f'The iframe title is identical to the page title ("{page_title}"). This can be confusing for screen reader users.',
-                "G88",
-                f'Clarify the purpose, e.g. title="{title_attr} Form" or title="Embedded {title_attr}".'
-            ))
+            if interactive_count > 5:
+                 findings.append(_finding(
+                    "1.2.1", "info",
+                    "Contextual: This frame contains multiple interactive elements. Ensure all internal functionality is keyboard accessible.",
+                    "Manual", "Manually verify complex functionality inside the frame."
+                ))
 
-        # 4. Manual Check: Dynamic Content
-        if interactive_count > 5:
-             findings.append(_finding(
-                "1.2.1", "info",
-                "Contextual: This frame contains multiple interactive elements. Ensure all internal functionality is keyboard accessible.",
-                "Manual", "Manually verify complex functionality inside the frame."
-            ))
+        # Re-map severities to 3-tier labels
+        for f in findings:
+            s = f["severity"]
+            if s == "error": f["tier"] = "Critical"
+            elif s == "warning": f["tier"] = "Warning"
+            elif s == "info" or f["technique"] == "Manual": f["tier"] = "Manual Check"
+            else: f["tier"] = "Best Practice"
 
-    # Re-map severities to 3-tier labels for frontend (Critical, Warning, Manual)
-    for f in findings:
-        s = f["severity"]
-        if s == "error": f["tier"] = "Critical"
-        elif s == "warning": f["tier"] = "Warning"
-        elif s == "info" or f["technique"] == "Manual": f["tier"] = "Manual Check"
-        else: f["tier"] = "Best Practice"
+        # Generate fixes
+        m_fix = _generate_minimal_fix(el, element_type, findings)
+        f_fix = _generate_full_fix(el, element_type, findings)
 
-    # Generate fixes
-    minimal_fix = _generate_minimal_fix(el, element_type, findings)
-    full_fix = _generate_full_fix(el, element_type, findings)
+        # Summary counts
+        summary = {
+            "critical": sum(1 for f in findings if f.get("tier") == "Critical"),
+            "warning":  sum(1 for f in findings if f.get("tier") == "Warning"),
+            "manual":   sum(1 for f in findings if f.get("tier") == "Manual Check"),
+            "passes":   sum(1 for f in findings if f["severity"] == "pass"),
+            "total":    len(findings),
+        }
 
-    # Summary counts
-    summary = {
-        "critical": sum(1 for f in findings if f.get("tier") == "Critical"),
-        "warning":  sum(1 for f in findings if f.get("tier") == "Warning"),
-        "manual":   sum(1 for f in findings if f.get("tier") == "Manual Check"),
-        "passes":   sum(1 for f in findings if f["severity"] == "pass"),
-        "total":    len(findings),
-    }
+        results.append({
+            "element_type": element_type,
+            "findings": findings,
+            "minimal_fix": m_fix,
+            "full_fix": f_fix,
+            "summary": summary,
+            "snippet": str(el), # Add the specific tag snippet back
+            "error": None,
+        })
 
-    return {
-        "element_type": element_type,
-        "findings": findings,
-        "minimal_fix": minimal_fix,
-        "full_fix": full_fix,
-        "summary": summary,
-        "error": None,
-    }
+    return results

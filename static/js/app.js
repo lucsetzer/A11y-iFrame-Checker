@@ -11,9 +11,17 @@ createApp({
             results: [],
             selectedResult: null,
             savedResults: [],
+            showDuplicates: false,
+            evidenceUrl: null, // New field for scan screenshot
             saveMessage: '',
             announcement: ''
         };
+    },
+    computed: {
+        filteredResults() {
+            if (this.showDuplicates) return this.results;
+            return this.results.filter(r => !r.is_duplicate);
+        }
     },
     methods: {
         async runAudit() {
@@ -41,6 +49,7 @@ createApp({
 
                 const data = await response.json();
                 this.results = data.findings || [];
+                this.evidenceUrl = data.evidence || null; // Capture the screenshot URL
 
                 if (this.results.length === 0) {
                     this.error = "No media embeds found.";
@@ -79,10 +88,25 @@ createApp({
 
         getStatusText(res) {
             const s = res.summary || {};
-            if (s.critical > 0) return '❌ Critical';
-            if (s.warning > 0) return '⚠️ Warning';
-            if (s.manual > 0) return '🔍 Manual Check';
-            return '✅ Pass';
+            let status = '✅ Pass';
+            if (s.critical > 0) status = '❌ Critical';
+            else if (s.warning > 0) status = '⚠️ Warning';
+            else if (s.manual > 0) status = '🔍 Manual Check';
+
+            return res.is_duplicate ? `${status} (Duplicate)` : status;
+        },
+
+        getDisplaySrc(res) {
+            if (!res.src && !res.frame_url) return 'Unknown Source';
+            const url = res.src || res.frame_url;
+            try {
+                const u = new URL(url);
+                let path = u.pathname;
+                if (path.length > 20) path = '...' + path.slice(-17);
+                return u.hostname + path;
+            } catch (e) {
+                return url.length > 30 ? url.substring(0, 27) + '...' : url;
+            }
         },
 
         getTierClass(tier) {

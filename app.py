@@ -51,28 +51,53 @@ def check_embed():
     from services import browser_fetcher
     
     all_results = []
+    evidence_url = None
     
     if url:
         if not url.startswith(("http://", "https://")):
             url = "https://" + url
         try:
             found_items = browser_fetcher.get_embeds(url)
-            for item in found_items:
-                s = item["snippet"]
-                # Pass the rich metadata into the checker
-                audit_res = embed_checker.check_embed(s, metadata=item)
+            for i, item in enumerate(found_items):
+                s = item.get("snippet", "")
+                # check_embed now returns a list (usually len 1 in URL mode)
+                audit_list = embed_checker.check_embed(s, metadata=item)
                 
-                # Add location and contextual metadata
-                audit_res["line"] = item.get("line")
-                audit_res["source_url"] = item.get("url")
-                all_results.append(audit_res)
+                # Get evidence URL from the first item's summary
+                if i == 0 and item.get("_scan_summary"):
+                    evidence_url = item["_scan_summary"].get("evidence_url")
+                
+                for audit_res in audit_list:
+                    # Add location and contextual metadata for frontend
+                    audit_res["line"] = item.get("line")
+                    audit_res["source_url"] = item.get("page_url") or item.get("frame_url") or url
+                    audit_res["frame_url"] = item.get("frame_url")
+                    
+                    # Uniqueness
+                    audit_res["is_duplicate"] = item.get("is_duplicate", False)
+                    audit_res["duplicate_count"] = item.get("duplicate_count", 0)
+                    audit_res["original_index"] = item.get("original_index")
+                    audit_res["uniqueness_key"] = item.get("uniqueness_key")
+                    audit_res["dom_path"] = item.get("dom_path")
+                    # Use provided index or default to loop counter
+                    audit_res["index"] = item.get("index") or (i + 1)
+                    audit_res["src"] = item.get("src")
+                    
+                    all_results.append(audit_res)
         except Exception as e:
             return _error(f"Scan failed: {str(e)}")
     else:
-        audit_res = embed_checker.check_embed(snippet)
-        all_results.append(audit_res)
+        # Snippet Mode - can now return multiple results
+        audit_list = embed_checker.check_embed(snippet)
+        for i, audit_res in enumerate(audit_list):
+            audit_res["index"] = i + 1
+            all_results.append(audit_res)
 
-    return jsonify({"findings": all_results, "count": len(all_results)})
+    return jsonify({
+        "findings": all_results, 
+        "count": len(all_results),
+        "evidence": evidence_url
+    })
 
 
 @app.route("/export", methods=["POST"])
