@@ -45,6 +45,12 @@ venv/Scripts/activate # Windows
 # Install dependencies
 pip install -r requirements.txt
 
+# Install Playwright
+pip install playwright
+
+# Install Beautifulsoup
+pip install beautifulsoup4
+
 # Install Playwright browsers
 playwright install chromium
 ```
