@@ -32,7 +32,7 @@ Results are prioritized into actionable tiers:
 ### 2. Installation
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/A11y-iFrame-Checker.git
+git clone https://github.com/lucsetzer/A11y-iFrame-Checker.git
 cd A11y-iFrame-Checker
 
 # Install dependencies
