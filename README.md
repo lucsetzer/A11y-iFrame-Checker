@@ -35,6 +35,13 @@ Results are prioritized into actionable tiers:
 git clone https://github.com/lucsetzer/A11y-iFrame-Checker.git
 cd A11y-iFrame-Checker
 
+# Create venv
+python3 -m venv venv
+
+# Activate it
+source venv/bin/activate # Mac/Linux
+venv/Scripts/activate # Windows
+
 # Install dependencies
 pip install -r requirements.txt
 
