@@ -28,6 +28,7 @@ createApp({
             this.error = null;
             this.results = [];
             this.selectedResult = null;
+            this.evidenceUrl = null; // Clear old evidence at start of new run
             this.loading = true;
             this.announce('Audit started...');
 
@@ -69,6 +70,7 @@ createApp({
             this.url = '';
             this.results = [];
             this.selectedResult = null;
+            this.evidenceUrl = null; // Clear evidence image
             this.error = null;
             this.announce('Audit cleared.');
         },
