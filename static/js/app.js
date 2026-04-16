@@ -3,7 +3,8 @@ const { createApp } = Vue;
 createApp({
     data() {
         return {
-            mode: 'snippet',
+            activeTab: 'embed',  // 'embed' | 'pdf'
+            mode: 'snippet',     // 'snippet' | 'url' | 'pdf'
             snippet: '',
             url: '',
             loading: false,
@@ -12,7 +13,8 @@ createApp({
             selectedResult: null,
             savedResults: [],
             showDuplicates: false,
-            evidenceUrl: null, // New field for scan screenshot
+            evidenceUrl: null,
+            pdfUrl: '',
             saveMessage: '',
             announcement: ''
         };
@@ -24,6 +26,16 @@ createApp({
         }
     },
     methods: {
+        switchTab(tab) {
+            this.activeTab = tab;
+            this.mode = tab === 'pdf' ? 'pdf' : 'snippet';
+            this.results = [];
+            this.selectedResult = null;
+            this.error = null;
+            this.evidenceUrl = null;
+            this.announce(`Switched to ${tab === 'pdf' ? 'PDF' : 'Embed'} Auditor.`);
+        },
+
         async runAudit() {
             this.error = null;
             this.results = [];
@@ -32,16 +44,40 @@ createApp({
             this.loading = true;
             this.announce('Audit started...');
 
-            const payload = this.mode === 'snippet'
-                ? { snippet: this.snippet }
-                : { url: this.url };
-
             try {
-                const response = await fetch('/check-embed', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+                let response;
+                if (this.mode === 'pdf') {
+                    const fileInput = this.$refs.pdfFile;
+                    if (fileInput && fileInput.files.length > 0) {
+                        // File Upload
+                        const formData = new FormData();
+                        formData.append('file', fileInput.files[0]);
+                        response = await fetch('/check-pdf', {
+                            method: 'POST',
+                            body: formData
+                        });
+                    } else if (this.pdfUrl) {
+                        // URL Scan
+                        response = await fetch('/check-pdf', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ url: this.pdfUrl })
+                        });
+                    } else {
+                        throw new Error('Please provide a PDF URL or upload a file.');
+                    }
+                } else {
+                    // Snippet or URL Mode
+                    const payload = this.mode === 'snippet'
+                        ? { snippet: this.snippet }
+                        : { url: this.url };
+
+                    response = await fetch('/check-embed', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                }
 
                 if (!response.ok) {
                     const errData = await response.json();
@@ -49,8 +85,12 @@ createApp({
                 }
 
                 const data = await response.json();
-                this.results = data.findings || [];
-                this.evidenceUrl = data.evidence || null; // Capture the screenshot URL
+                if (this.mode === 'pdf') {
+                    this.results = [data]; // Wrap single PDF result in array
+                } else {
+                    this.results = data.findings || [];
+                    this.evidenceUrl = data.evidence || null;
+                }
 
                 if (this.results.length === 0) {
                     this.error = "No media embeds found.";
@@ -68,6 +108,8 @@ createApp({
         clear() {
             this.snippet = '';
             this.url = '';
+            this.pdfUrl = '';
+            if (this.$refs.pdfFile) this.$refs.pdfFile.value = '';
             this.results = [];
             this.selectedResult = null;
             this.evidenceUrl = null; // Clear evidence image

@@ -10,7 +10,7 @@ import os
 from dotenv import load_dotenv, set_key
 from flask import Flask, jsonify, render_template, request, send_file
 
-from services import embed_checker
+from services import embed_checker, pdf_auditor
 
 load_dotenv()
 
@@ -24,6 +24,27 @@ ENV_PATH = os.path.join(os.path.dirname(__file__), ".env")
 
 def _error(msg: str, code: int = 400):
     return jsonify({"error": msg}), code
+
+
+# ── Debug ─────────────────────────────────────────────────────────────────────
+
+@app.route("/ping")
+def ping():
+    return "✅ Server is running!"
+
+@app.route("/test-vue")
+def test_vue():
+    return """<!DOCTYPE html>
+<html><head><script src="/static/js/vue.global.prod.js"></script></head>
+<body style="font-family:sans-serif;padding:2rem;background:#f0f7f4">
+  <h1 id="status" style="color:red">❌ Vue did NOT mount</h1>
+  <div id="app">{{ message }}</div>
+  <script>
+    Vue.createApp({ data() { return { message: '✅ Vue is working!' }; } }).mount('#app');
+    document.getElementById('status').style.color = 'green';
+    document.getElementById('status').textContent = '✅ Vue loaded successfully';
+  </script>
+</body></html>"""
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -100,6 +121,52 @@ def check_embed():
     })
 
 
+@app.route("/check-pdf", methods=["POST"])
+def check_pdf():
+    """
+    Perform an accessibility audit on a PDF via URL or upload.
+    """
+    import httpx
+    
+    # 1. Check for file upload
+    if 'file' in request.files:
+        file = request.files['file']
+        if file.filename == '':
+            return _error("No file selected.")
+        try:
+            pdf_bytes = file.read()
+            result = pdf_auditor.audit_pdf(pdf_bytes)
+            return jsonify(result)
+        except Exception as e:
+            return _error(f"PDF upload audit failed: {str(e)}")
+            
+    # 2. Check for URL
+    # Handle both JSON (from URL tab) and Form Data (if needed)
+    data = request.get_json(silent=True) or {}
+    url = (data.get("url") or "").strip()
+    
+    if not url:
+        return _error("Provide a PDF URL or upload a file.")
+        
+    try:
+        if not url.startswith(("http://", "https://")):
+            url = "https://" + url
+        
+        # Fetch PDF with httpx
+        with httpx.Client(follow_redirects=True) as client:
+            resp = client.get(url, timeout=30.0)
+            resp.raise_for_status()
+            pdf_bytes = resp.content
+            
+            result = pdf_auditor.audit_pdf(pdf_bytes)
+            if result.get("metadata"):
+                result["metadata"]["source_url"] = url
+            return jsonify(result)
+            
+    except Exception as e:
+        return _error(f"PDF URL scan failed: {str(e)}")
+
+
 @app.route("/export", methods=["POST"])
 def export():
     """
@@ -167,4 +234,4 @@ def export():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=5050)

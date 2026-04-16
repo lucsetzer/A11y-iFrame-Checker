@@ -1,9 +1,58 @@
-.env
+# Python
 __pycache__/
-*.pyc
-*.pyo
-.venv/
+*.py[cod]
+*$py.class
 venv/
+env/
+.env
+.venv
 *.egg-info/
 dist/
+build/
+
+# Flask
+instance/
+.webassets-cache
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Screenshots and uploads
+static/scans/
+static/uploads/
+uploads/
+temp/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+
+# Environment variables (keep secrets out!)
+.env
+.env.local
+.env.production
+
+# Node (if any Vue build artifacts)
+node_modules/
+dist/
+npm-debug.log*
+
+# Vue
+*.log
+*.lock

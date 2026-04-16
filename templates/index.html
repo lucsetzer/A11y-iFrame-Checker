@@ -13,31 +13,33 @@
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
     rel="stylesheet" />
   <link rel="stylesheet" href="/static/css/style.css" />
-  <!-- Vue 3 CDN -->
-  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- Vue 3 (local) -->
+  <script src="/static/js/vue.global.prod.js"></script>
 </head>
 
 <body>
-  <div id="app" v-cloak>
+  <div id="app">
     {% raw %}
-    <!-- ── Header ─────────────────────────────────────────────────────────────── -->
+    <!-- ── Header ──────────────────────────────────────────────────────────── -->
     <header class="site-header" role="banner">
       <div class="header-inner">
         <div class="brand">
           <span class="brand-icon" aria-hidden="true">⬡</span>
           <div>
             <h1 class="brand-name">A11y iFrame Checker</h1>
-            <p class="brand-sub">WCAG 2.2 Auditor for Web Embeds</p>
+            <p class="brand-sub">WCAG 2.2 Auditor for Web Embeds &amp; PDFs</p>
           </div>
         </div>
       </div>
     </header>
 
-    <!-- ── Main Content ───────────────────────────────────────────────────────── -->
+    <!-- ── Main Content ──────────────────────────────────────────────────────── -->
     <main class="main-content">
-      <!-- Tab Navigation -->
+
+      <!-- Top-level Tab Navigation -->
       <div class="tab-nav" role="tablist">
-        <button class="tab-btn active" role="tab" aria-selected="true">
+        <button class="tab-btn" :class="{ active: activeTab === 'embed' }"
+          role="tab" :aria-selected="activeTab === 'embed'" @click="switchTab('embed')">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"
             stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round"
@@ -45,21 +47,31 @@
           </svg>
           Embed Auditor
         </button>
+        <button class="tab-btn" :class="{ active: activeTab === 'pdf' }"
+          role="tab" :aria-selected="activeTab === 'pdf'" @click="switchTab('pdf')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          PDF Auditor
+        </button>
       </div>
 
-      <section class="tab-panel active">
+      <!-- ══════════════════════════════════════════════════════════════════════
+           EMBED AUDITOR PANEL
+      ══════════════════════════════════════════════════════════════════════ -->
+      <section class="tab-panel" :class="{ active: activeTab === 'embed' }">
         <div class="panel-grid">
+
           <!-- Input Column -->
           <div class="input-col">
             <div class="card">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
                 <h2 class="card-title" style="margin:0;">Auditor Input</h2>
-                <div class="mode-toggle"
-                  style="display: flex; gap: 2px; background: #f0f0f0; padding: 2px; border-radius: 6px; border: 1px solid #ddd;">
-                  <button type="button" class="btn btn-xs" :class="{'active-mode': mode === 'snippet'}"
-                    @click="mode = 'snippet'">Snippet</button>
-                  <button type="button" class="btn btn-xs" :class="{'active-mode': mode === 'url'}"
-                    @click="mode = 'url'">Scan URL</button>
+                <div class="tabs">
+                  <button class="tab-btn" :class="{ active: mode === 'snippet' }" @click="mode = 'snippet'">HTML Snippet</button>
+                  <button class="tab-btn" :class="{ active: mode === 'url' }" @click="mode = 'url'">Scan URL</button>
                 </div>
               </div>
 
@@ -96,21 +108,18 @@
             </div>
           </div>
 
-          <!-- Results Column -->
+          <!-- Embed Results Column -->
           <div class="results-col">
-            <!-- Placeholder -->
             <div v-if="!results.length && !loading && !error" class="results-placeholder">
               <div class="placeholder-icon">⬡</div>
               <p>Audit results will appear here</p>
             </div>
 
-            <!-- Loading -->
             <div v-if="loading" class="loading-overlay">
               <div class="spinner"></div>
               <p>Running audit...</p>
             </div>
 
-            <!-- Error -->
             <div v-if="error" class="error-panel" role="alert">
               <p>{{ error }}</p>
             </div>
@@ -118,24 +127,18 @@
             <!-- Scan Evidence (Playwright Screenshot) -->
             <div v-if="evidenceUrl && !selectedResult" class="card card-full"
               style="margin-bottom: 2rem; padding: 0; overflow: hidden;">
-              <div
-                style="padding: 1rem; border-bottom: 1px solid #eee; background: #fdfdfd; display: flex; justify-content: space-between; align-items: center;">
+              <div style="padding: 1rem; border-bottom: 1px solid #eee; background: #fdfdfd; display: flex; justify-content: space-between; align-items: center;">
                 <h3 style="margin: 0; font-size: 1rem; color: #005035;">Scan Evidence (Active Capture)</h3>
-                <a :href="evidenceUrl" target="_blank" class="btn btn-sm btn-ghost" style="font-size: 0.7rem;">View Full
-                  Image</a>
+                <a :href="evidenceUrl" target="_blank" class="btn btn-sm btn-ghost" style="font-size: 0.7rem;">View Full Image</a>
               </div>
-              <div
-                style="background: #222; display: flex; justify-content: center; align-items: center; max-height: 400px; overflow-y: auto;">
-                <img :src="evidenceUrl" alt="Screenshot of the scanned page"
-                  style="max-width: 100%; height: auto; display: block;">
+              <div style="background: #222; display: flex; justify-content: center; align-items: center; max-height: 400px; overflow-y: auto;">
+                <img :src="evidenceUrl" alt="Screenshot of the scanned page" style="max-width: 100%; height: auto; display: block;">
               </div>
             </div>
 
-            <!-- Scan Findings Table (URL & Multi-Snippet Mode) -->
-            <div v-if="results.length > 1 && !selectedResult" class="card card-full"
-              style="padding:0; overflow:hidden;">
-              <div
-                style="padding: 1rem; border-bottom: 1px solid #eee; background: #fdfdfd; display: flex; justify-content: space-between; align-items: center;">
+            <!-- Scan Findings Table (multi-result) -->
+            <div v-if="results.length > 1 && !selectedResult" class="card card-full" style="padding:0; overflow:hidden;">
+              <div style="padding: 1rem; border-bottom: 1px solid #eee; background: #fdfdfd; display: flex; justify-content: space-between; align-items: center;">
                 <h3 style="margin: 0; font-size: 1rem; color: #005035;">Scan Findings ({{ results.length }})</h3>
                 <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: #666;">
                   <input type="checkbox" id="show-dupes" v-model="showDuplicates">
@@ -157,9 +160,7 @@
                     <tr v-for="(res, idx) in filteredResults" :key="idx" :class="{'row-duplicate': res.is_duplicate}">
                       <td style="font-size:0.75rem; color:#999;">{{ res.index || idx + 1 }}</td>
                       <td><span class="platform-badge">&lt;{{ res.element_type }}&gt;</span></td>
-                      <td style="font-size:0.75rem; color:#666;" :title="res.src || res.frame_url">
-                        {{ getDisplaySrc(res) }}
-                      </td>
+                      <td style="font-size:0.75rem; color:#666;" :title="res.src || res.frame_url">{{ getDisplaySrc(res) }}</td>
                       <td :class="getStatusClass(res)">{{ getStatusText(res) }}</td>
                       <td><button @click="selectResult(res)" class="btn btn-sm btn-secondary">Review</button></td>
                     </tr>
@@ -168,17 +169,15 @@
               </div>
             </div>
 
-            <!-- Detail Result View -->
+            <!-- Detail Result View (embed) -->
             <div v-if="selectedResult || (filteredResults.length === 1 && !loading)" id="detail-view">
               <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
                 <button @click="selectedResult = null" class="btn btn-sm btn-ghost" v-if="results.length > 1">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor" stroke-width="2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                   </svg>
                   Back to Results
                 </button>
-
                 <span v-if="(selectedResult || results[0]).is_duplicate"
                   style="font-size: 0.75rem; background: #f0f0f0; padding: 4px 8px; border-radius: 4px; border: 1px dashed #ccc;">
                   Duplicate of Item #{{ (selectedResult || results[0]).original_index }}
@@ -187,24 +186,19 @@
 
               <!-- Score Bar -->
               <div class="checker-score-bar">
-                <div class="score-item"><span class="score-val fail">{{ (selectedResult || results[0]).summary.critical
-                    }}</span> Critical</div>
-                <div class="score-item"><span class="score-val warn">{{ (selectedResult || results[0]).summary.warning
-                    }}</span> Warnings</div>
-                <div class="score-item"><span class="score-val info">{{ (selectedResult || results[0]).summary.manual
-                    }}</span> Manual</div>
+                <div class="score-item"><span class="score-val fail">{{ (selectedResult || results[0]).summary.critical }}</span> Critical</div>
+                <div class="score-item"><span class="score-val warn">{{ (selectedResult || results[0]).summary.warning }}</span> Warnings</div>
+                <div class="score-item"><span class="score-val info">{{ (selectedResult || results[0]).summary.manual }}</span> Manual</div>
               </div>
 
-              <!-- Findings Card -->
+              <!-- Findings -->
               <div class="card">
-                <h2 class="card-title">Findings <span class="card-subtitle">&lt;{{ (selectedResult ||
-                    results[0]).element_type }}&gt;</span></h2>
+                <h2 class="card-title">Findings <span class="card-subtitle">&lt;{{ (selectedResult || results[0]).element_type }}&gt;</span></h2>
                 <ul class="findings-list">
-                  <li v-for="(f, fidx) in (selectedResult || results[0]).findings" :key="fidx" class="finding-item"
-                    :class="'finding-' + getTierClass(f.tier)">
+                  <li v-for="(f, fidx) in (selectedResult || results[0]).findings" :key="fidx"
+                    class="finding-item" :class="'finding-' + getTierClass(f.tier)">
                     <div class="finding-header">
-                      <span class="badge badge-sm" :class="'badge-' + getTierClass(f.tier)">{{ f.tier.toUpperCase()
-                        }}</span>
+                      <span class="badge badge-sm" :class="'badge-' + getTierClass(f.tier)">{{ f.tier.toUpperCase() }}</span>
                       <strong>{{ f.description }}</strong>
                     </div>
                     <p class="finding-hint">{{ f.fix_hint }}</p>
@@ -216,8 +210,7 @@
               <div class="card">
                 <div class="card-title-row">
                   <h2 class="card-title">Minimal Fix <span class="card-subtitle">(Safe Correction)</span></h2>
-                  <button @click="copyText((selectedResult || results[0]).minimal_fix)"
-                    class="btn btn-sm btn-ghost">Copy</button>
+                  <button @click="copyText((selectedResult || results[0]).minimal_fix)" class="btn btn-sm btn-ghost">Copy</button>
                 </div>
                 <pre class="code-block">{{ (selectedResult || results[0]).minimal_fix }}</pre>
               </div>
@@ -226,22 +219,131 @@
               <div class="card card-rationale">
                 <div class="card-title-row">
                   <h2 class="card-title">Full Version <span class="card-subtitle">(Recommended)</span></h2>
-                  <button @click="copyText((selectedResult || results[0]).full_fix)"
-                    class="btn btn-sm btn-ghost">Copy</button>
+                  <button @click="copyText((selectedResult || results[0]).full_fix)" class="btn btn-sm btn-ghost">Copy</button>
                 </div>
                 <pre class="code-block">{{ (selectedResult || results[0]).full_fix }}</pre>
               </div>
 
               <div class="export-actions">
-                <button @click="saveResult(selectedResult || results[0])" class="btn btn-secondary">
-                  Save to Export
-                </button>
+                <button @click="saveResult(selectedResult || results[0])" class="btn btn-secondary">Save to Export</button>
                 <span v-if="saveMessage" class="save-count">{{ saveMessage }}</span>
               </div>
             </div>
           </div>
         </div>
       </section>
+
+      <!-- ══════════════════════════════════════════════════════════════════════
+           PDF AUDITOR PANEL
+      ══════════════════════════════════════════════════════════════════════ -->
+      <section class="tab-panel" :class="{ active: activeTab === 'pdf' }">
+        <div class="panel-grid">
+
+          <!-- PDF Input Column -->
+          <div class="input-col">
+            <div class="card">
+              <h2 class="card-title">PDF Input</h2>
+
+              <div class="field">
+                <label for="checker-pdf-url">PDF URL</label>
+                <input v-model="pdfUrl" type="url" id="checker-pdf-url" placeholder="https://university.edu/document.pdf">
+              </div>
+
+              <div style="margin: 1rem 0; text-align: center; color: #666; font-size: 0.8rem; font-weight: bold;">— OR —</div>
+
+              <div class="field">
+                <label for="checker-pdf-file">Upload PDF File</label>
+                <input type="file" id="checker-pdf-file" ref="pdfFile" accept="application/pdf" style="padding: 0.5rem; width: 100%; border: 1px solid var(--border-default); border-radius: var(--radius-md);">
+              </div>
+
+              <div class="form-actions">
+                <button @click="runAudit" class="btn btn-primary" :disabled="loading">
+                  <span v-if="!loading">Audit PDF</span>
+                  <span v-else class="spinner" aria-hidden="true"></span>
+                </button>
+                <button @click="clear" class="btn btn-ghost">Clear</button>
+              </div>
+            </div>
+
+            <div class="card card-info" v-if="!results.length">
+              <h3 class="card-title-sm">What gets checked</h3>
+              <p class="card-body-sm">
+                <strong>Document metadata</strong> — Title, author, language tag<br />
+                <strong>Tagging status</strong> — Structural tags required for screen readers<br />
+                <strong>PDF/UA &amp; WCAG 2.2</strong> — Reading order, heading structure, alt text
+              </p>
+            </div>
+          </div>
+
+          <!-- PDF Results Column -->
+          <div class="results-col">
+            <div v-if="!results.length && !loading && !error" class="results-placeholder">
+              <div class="placeholder-icon">📄</div>
+              <p>PDF audit results will appear here</p>
+            </div>
+
+            <div v-if="loading" class="loading-overlay">
+              <div class="spinner"></div>
+              <p>Auditing PDF...</p>
+            </div>
+
+            <div v-if="error" class="error-panel" role="alert">
+              <p>{{ error }}</p>
+            </div>
+
+            <!-- PDF Results (single result wrapped in array) -->
+            <div v-if="results.length > 0 && !loading">
+
+              <!-- Metadata Summary -->
+              <div v-if="results[0].metadata" class="card" style="margin-bottom: 1rem;">
+                <h2 class="card-title">PDF Document Summary</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.9rem;">
+                  <div><strong>Title:</strong> {{ results[0].metadata.title || 'Untitled' }}</div>
+                  <div><strong>Pages:</strong> {{ results[0].metadata.pages }}</div>
+                  <div>
+                    <strong>Tagged:</strong>
+                    <span :style="{ color: results[0].metadata.is_tagged ? '#005035' : '#cc0000', fontWeight: 'bold', marginLeft: '4px' }">
+                      {{ results[0].metadata.is_tagged ? 'Yes (Accessible)' : 'No (Inaccessible)' }}
+                    </span>
+                  </div>
+                  <div v-if="results[0].metadata.source_url">
+                    <strong>Source:</strong>
+                    <a :href="results[0].metadata.source_url" target="_blank" style="color: #005035; margin-left: 4px;">View PDF</a>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Score Bar -->
+              <div class="checker-score-bar" v-if="results[0].summary">
+                <div class="score-item"><span class="score-val fail">{{ results[0].summary.critical }}</span> Critical</div>
+                <div class="score-item"><span class="score-val warn">{{ results[0].summary.warning }}</span> Warnings</div>
+                <div class="score-item"><span class="score-val info">{{ results[0].summary.manual }}</span> Manual</div>
+              </div>
+
+              <!-- Findings -->
+              <div class="card" v-if="results[0].findings">
+                <h2 class="card-title">Findings <span class="card-subtitle">PDF Document</span></h2>
+                <ul class="findings-list">
+                  <li v-for="(f, fidx) in results[0].findings" :key="fidx"
+                    class="finding-item" :class="'finding-' + getTierClass(f.tier)">
+                    <div class="finding-header">
+                      <span class="badge badge-sm" :class="'badge-' + getTierClass(f.tier)">{{ f.tier.toUpperCase() }}</span>
+                      <strong>{{ f.description }}</strong>
+                    </div>
+                    <p class="finding-hint">{{ f.fix_hint }}</p>
+                  </li>
+                </ul>
+              </div>
+
+              <div class="export-actions">
+                <button @click="saveResult(results[0])" class="btn btn-secondary">Save to Export</button>
+                <span v-if="saveMessage" class="save-count">{{ saveMessage }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </main>
 
     <!-- Export Bar -->
