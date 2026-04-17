@@ -16,7 +16,8 @@ createApp({
             evidenceUrl: null,
             pdfUrl: '',
             saveMessage: '',
-            announcement: ''
+            announcement: '',
+            pdfDetails: []
         };
     },
     computed: {
@@ -40,12 +41,14 @@ createApp({
             this.error = null;
             this.results = [];
             this.selectedResult = null;
-            this.evidenceUrl = null; // Clear old evidence at start of new run
+            this.evidenceUrl = null;
             this.loading = true;
             this.announce('Audit started...');
 
             try {
                 let response;
+                
+                // --- PDF MODE ---
                 if (this.mode === 'pdf') {
                     const fileInput = this.$refs.pdfFile;
                     if (fileInput && fileInput.files.length > 0) {
@@ -66,12 +69,13 @@ createApp({
                     } else {
                         throw new Error('Please provide a PDF URL or upload a file.');
                     }
-                } else {
+                } 
+               // --- EMBED MODE ---
+                else {
                     // Snippet or URL Mode
                     const payload = this.mode === 'snippet'
                         ? { snippet: this.snippet }
                         : { url: this.url };
-
                     response = await fetch('/check-embed', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -85,9 +89,47 @@ createApp({
                 }
 
                 const data = await response.json();
+                console.log('FULL BACKEND RESPONSE:', JSON.stringify(data, null, 2));
+                console.log('Response:', data);
+                console.log('RAW DATA from backend:', JSON.stringify(data, null, 2));
+
+                // --- PROCESS RESPONSE ---
                 if (this.mode === 'pdf') {
-                    this.results = [data]; // Wrap single PDF result in array
+                    // Handle multi-PDF page scan response - use data, not this.results
+                    if (data.pdfs && data.pdfs.length > 0) {
+                        // Multiple PDFs from a page scan
+                        this.results = [{
+                            element_type: "PDF Page Scan",
+                            combined_summary: data.combined_summary || { critical: 0, warning: 0, manual: 0 },
+                            total_pdfs: data.total_pdfs,
+                            successful_scans: data.successful_scans,
+                            pdfs: data.pdfs
+                        }];
+                        
+                        // Store individual PDF details from data (not this.results)
+                        this.pdfDetails = data.pdfs.map(pdf => ({
+                            url: pdf.url,
+                            filename: pdf.url.split('/').pop(),
+                            success: pdf.success,
+                            summary: pdf.summary || { critical: 0, warning: 0, manual: 0 },
+                            findings: pdf.audit?.findings || [],
+                            error: pdf.error
+                        }));
+                        
+                        console.log('pdfDetails created, count:', this.pdfDetails.length);
+                        this.announcement = `Found ${data.total_pdfs} PDF(s), scanned ${data.successful_scans} successfully.`;
+                    }
+                    // Handle single PDF response (direct URL or file)
+                    else if (data.element_type === 'PDF') {
+                        this.results = [data];
+                        this.pdfDetails = [];
+                    }
+                    else {
+                        this.results = [data];
+                        this.pdfDetails = [];
+                    }
                 } else {
+                    // Embed mode results
                     this.results = data.findings || [];
                     this.evidenceUrl = data.evidence || null;
                 }
@@ -197,6 +239,47 @@ createApp({
                 this.announce(`Downloading ${format.toUpperCase()} report.`);
             } catch (err) {
                 alert('Export error: ' + err.message);
+            }
+        },
+
+        async exportCurrent() {
+            if (!this.results.length && !this.pdfDetails.length) {
+                this.announce('No results to export. Run a scan first.');
+                return;
+            }
+            
+            // Build complete data including pdfDetails
+            let exportData = [...this.results];
+            
+            // If we have pdfDetails from a page scan, add them to the export
+            if (this.pdfDetails && this.pdfDetails.length > 0) {
+                exportData = this.pdfDetails;
+            }
+            
+            try {
+                const response = await fetch('/export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        format: 'pdf',
+                        results: exportData
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Export failed');
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `a11y-scan-${new Date().toISOString().slice(0,19)}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                this.announce('PDF report downloaded.');
+            } catch (err) {
+                this.error = err.message;
+                this.announce(`Export error: ${err.message}`);
             }
         },
 
